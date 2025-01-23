@@ -28,6 +28,10 @@ namespace diffdrive_arduino
 hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
   const hardware_interface::HardwareInfo & info)
 {
+  RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "Initializiiiiiing.");
+
+  RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"),(std::string("Initiaaaaaaaaliziiiiiing.") + std::string(cfg_.left_wheel_name)).c_str());
+
   if (
     hardware_interface::SystemInterface::on_init(info) !=
     hardware_interface::CallbackReturn::SUCCESS)
@@ -54,11 +58,11 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
   {
     RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "PID values not supplied, using defaults.");
   }
-  
 
   wheel_l_.setup(cfg_.left_wheel_name, cfg_.enc_counts_per_rev);
   wheel_r_.setup(cfg_.right_wheel_name, cfg_.enc_counts_per_rev);
 
+RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "Initiaaaaaaaaliziiiiiinggggggggggggggg.");
 
   for (const hardware_interface::ComponentInfo & joint : info_.joints)
   {
@@ -80,7 +84,7 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
         joint.command_interfaces[0].name.c_str(), hardware_interface::HW_IF_VELOCITY);
       return hardware_interface::CallbackReturn::ERROR;
     }
-
+RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "Initiababababababaliziiiiiing.");
     if (joint.state_interfaces.size() != 2)
     {
       RCLCPP_FATAL(
@@ -98,7 +102,7 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
         joint.state_interfaces[0].name.c_str(), hardware_interface::HW_IF_POSITION);
       return hardware_interface::CallbackReturn::ERROR;
     }
-
+RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "Initibbbbbbbbbliziiiiiing.");
     if (joint.state_interfaces[1].name != hardware_interface::HW_IF_VELOCITY)
     {
       RCLCPP_FATAL(
@@ -108,7 +112,7 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
       return hardware_interface::CallbackReturn::ERROR;
     }
   }
-
+RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "Initiccccccccliziiiiiing.");
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -204,7 +208,7 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
     return hardware_interface::return_type::ERROR;
   }
 
-  comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
+  // comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
 
   double delta_seconds = period.seconds();
 
@@ -222,8 +226,10 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
 hardware_interface::return_type diffdrive_arduino ::DiffDriveArduinoHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
+  std::cerr << "velocity update " << wheel_l_.cmd << std::endl;
   if (!comms_.connected())
   {
+    std::cerr << "DISCONNECTED FROM ARDUINO " << wheel_l_.cmd << std::endl;
     return hardware_interface::return_type::ERROR;
   }
 

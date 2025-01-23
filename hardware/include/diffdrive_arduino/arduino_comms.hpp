@@ -32,6 +32,9 @@ LibSerial::BaudRate convert_baud_rate(int baud_rate)
 class ArduinoComms
 {
 
+private:
+  bool sending = false;
+
 public:
 
   ArduinoComms() = default;
@@ -54,25 +57,36 @@ public:
   }
 
 
-  std::string send_msg(const std::string &msg_to_send, bool print_output = false)
+  std::string send_msg(const std::string &msg_to_send, bool print_output = true)
   {
+    std::cerr << "sending " << msg_to_send << std::endl ;
+    if (this->sending) {
+      return "";
+    }
     serial_conn_.FlushIOBuffers(); // Just in case
-    serial_conn_.Write(msg_to_send);
+    serial_conn_.Write(msg_to_send + "\r");
 
     std::string response = "";
     try
     {
+      this->sending = true;
       // Responses end with \r\n so we will read up to (and including) the \n.
-      serial_conn_.ReadLine(response, '\n', timeout_ms_);
+      if (serial_conn_.IsDataAvailable()) {
+	  std::cerr << "about to read" << std::endl;
+          serial_conn_.ReadLine(response, '\n', timeout_ms_);
+	  std::cerr << "read " << response << std::endl;
+      }
     }
     catch (const LibSerial::ReadTimeout&)
     {
+        this->sending = false;
         std::cerr << "The ReadByte() call has timed out." << std::endl ;
     }
+    this->sending = false;
 
     if (print_output)
     {
-      std::cout << "Sent: " << msg_to_send << " Recv: " << response << std::endl;
+      std::cerr << "Sent: " << msg_to_send  << std::endl << " Recv: " << response << std::endl;
     }
 
     return response;
@@ -96,8 +110,11 @@ public:
     val_1 = std::atoi(token_1.c_str());
     val_2 = std::atoi(token_2.c_str());
   }
+
   void set_motor_values(int val_1, int val_2)
   {
+    std::cerr << "set values " << val_1 << " " << val_2 << std::endl;
+
     std::stringstream ss;
     ss << "m " << val_1 << " " << val_2 << "\r";
     send_msg(ss.str());
