@@ -6,6 +6,9 @@
 // #include <cstdlib>
 #include <libserial/SerialPort.h>
 #include <iostream>
+#include <thread>
+#include <atomic>
+#include <chrono>
 
 
 LibSerial::BaudRate convert_baud_rate(int baud_rate)
@@ -32,12 +35,30 @@ LibSerial::BaudRate convert_baud_rate(int baud_rate)
 class ArduinoComms
 {
 
-private:
-  bool sending = false;
-
 public:
 
   ArduinoComms() = default;
+
+  void start()
+  {
+    // Start the hardware and spawn the thread
+    RCLCPP_INFO(rclcpp::get_logger("MyHardwareInterface"), "Starting thread...");
+    this->is_running_ = true;
+
+    this->worker_thread_ = std::thread(&ArduinoComms::backgroundTask, this);
+  }
+
+  void stop()
+  {
+    // Stop the hardware and clean up the thread
+    RCLCPP_INFO(rclcpp::get_logger("MyHardwareInterface"), "Stopping thread...");
+    this->is_running_ = false;
+
+    if (this->worker_thread_.joinable())
+    {
+      this->worker_thread_.join();
+    }
+  }
 
   void connect(const std::string &serial_device, int32_t baud_rate, int32_t timeout_ms)
   {  
@@ -59,9 +80,10 @@ public:
 
   std::string send_msg(const std::string &msg_to_send, bool print_output = true)
   {
-    std::cerr << "sending " << msg_to_send << std::endl ;
-    if (this->sending) {
-      return "";
+    // std::cerr << "sending " << msg_to_send << std::endl ;
+    if (this->sending == true) {
+      // std::cerr << "won't send" << std::endl;
+      // return "";
     }
     serial_conn_.FlushIOBuffers(); // Just in case
     serial_conn_.Write(msg_to_send + "\r");
@@ -69,24 +91,24 @@ public:
     std::string response = "";
     try
     {
-      this->sending = true;
+      // this->sending = true;
       // Responses end with \r\n so we will read up to (and including) the \n.
-      if (serial_conn_.IsDataAvailable()) {
-	  std::cerr << "about to read" << std::endl;
+      //if (serial_conn_.IsDataAvailable()) {
+	  //std::cerr << "about to read" << std::endl;
           serial_conn_.ReadLine(response, '\n', timeout_ms_);
-	  std::cerr << "read " << response << std::endl;
-      }
+     // std::cerr << "response " << response << std::endl;
+      //}
     }
     catch (const LibSerial::ReadTimeout&)
     {
-        this->sending = false;
-        std::cerr << "The ReadByte() call has timed out." << std::endl ;
+        // this->sending = false;
+        // std::cerr << "The ReadByte() call has timed out." << std::endl ;
     }
     this->sending = false;
 
     if (print_output)
     {
-      std::cerr << "Sent: " << msg_to_send  << std::endl << " Recv: " << response << std::endl;
+      // std::cerr << "Sent: " << msg_to_send  << std::endl << " Recv: " << response << std::endl;
     }
 
     return response;
@@ -98,30 +120,58 @@ public:
     std::string response = send_msg("\r");
   }
 
-  void read_encoder_values(int &val_1, int &val_2)
-  {
+  void arduino_read_encoder_values() {
     std::string response = send_msg("e\r");
+
+    // std::cerr << "read values " << response << std::endl;
 
     std::string delimiter = " ";
     size_t del_pos = response.find(delimiter);
     std::string token_1 = response.substr(0, del_pos);
     std::string token_2 = response.substr(del_pos + delimiter.length());
 
-    val_1 = std::atoi(token_1.c_str());
-    val_2 = std::atoi(token_2.c_str());
+    try{
+    this->encoder1 = std::stoi(token_1.c_str());
+    this->encoder2 = std::stoi(token_2.c_str());
+    } catch  (const std::invalid_argument&) {
+
+    }
+
+    // std::cerr << "parsed values " << this->encoder1 << " " << this->encoder2 << std::endl;
   }
 
-  void set_motor_values(int val_1, int val_2)
+  void read_encoder_values(int &val_1, int &val_2)
   {
-    std::cerr << "set values " << val_1 << " " << val_2 << std::endl;
+    val_1 = this->encoder1;
+    val_2 = this->encoder2;
+  }
 
+  void set_motor_values(int val_1, int val_2) {
+    // std::cerr << "setting motor values " << val_1 << " " << val_2 << std::endl;
+    this->velocity1 = val_1;
+    this->velocity2 = val_2;
+  }
+
+  void arduino_set_motor_values()
+  {
     std::stringstream ss;
-    ss << "m " << val_1 << " " << val_2 << "\r";
+    ss << "m " << this->velocity1 << " " << this->velocity2 << "\r";
+    send_msg(ss.str());
+  }
+
+  void arduino_set_pid_values(){
+    std::stringstream ss;
+    ss << "u " << k_p << ":" << k_d << ":" << k_i << ":" << k_o << "\r";
     send_msg(ss.str());
   }
 
   void set_pid_values(int k_p, int k_d, int k_i, int k_o)
   {
+    this->k_p = k_p;
+    this->k_d = k_d;
+    this->k_i = k_i;
+    this->k_o = k_o;
+
     std::stringstream ss;
     ss << "u " << k_p << ":" << k_d << ":" << k_i << ":" << k_o << "\r";
     send_msg(ss.str());
@@ -130,6 +180,36 @@ public:
 private:
     LibSerial::SerialPort serial_conn_;
     int timeout_ms_;
+    bool sending = false;
+    double velocity1 = 0;
+    double velocity2 = 0;
+    double encoder1 = 0;
+    double encoder2 = 0;
+    int k_p;
+    int k_d;
+    int k_i;
+    int k_o;
+  std::thread worker_thread_;         // The worker thread
+  std::atomic<bool> is_running_;      // Flag to control the thread
+
+  void backgroundTask()
+  {
+    RCLCPP_INFO(rclcpp::get_logger("MyHardwareInterface"), "Worker thread started.");
+
+    while (this->is_running_)
+    {
+      // Perform periodic tasks (e.g., polling sensors)
+      // arduino_set_pid_values();
+      // std::this_thread::sleep_for(std::chrono::milliseconds(600));
+      arduino_set_motor_values();
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      arduino_read_encoder_values();
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    RCLCPP_INFO(rclcpp::get_logger("MyHardwareInterface"), "Worker thread stopped.");
+  }
+
 };
 
 #endif // DIFFDRIVE_ARDUINO_ARDUINO_COMMS_HPP

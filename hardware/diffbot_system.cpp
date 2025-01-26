@@ -157,6 +157,11 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_configure(
   comms_.connect(cfg_.device, cfg_.baud_rate, cfg_.timeout_ms);
   RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "Successfully configured!");
 
+  // Start the hardware and spawn the thread
+  RCLCPP_INFO(rclcpp::get_logger("MyHardwareInterface"), "Starting hardware...");
+
+  comms_.start();
+
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -169,6 +174,11 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_cleanup(
     comms_.disconnect();
   }
   RCLCPP_INFO(rclcpp::get_logger("DiffDriveArduinoHardware"), "Successfully cleaned up!");
+
+  // Stop the hardware and clean up the thread
+  RCLCPP_INFO(rclcpp::get_logger("MyHardwareInterface"), "Stopping hardware...");
+
+  comms_.stop();
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -208,13 +218,15 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
     return hardware_interface::return_type::ERROR;
   }
 
-  // comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
+  comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
 
   double delta_seconds = period.seconds();
 
   double pos_prev = wheel_l_.pos;
   wheel_l_.pos = wheel_l_.calc_enc_angle();
   wheel_l_.vel = (wheel_l_.pos - pos_prev) / delta_seconds;
+
+  // std::cerr << "left pos/velocity " << wheel_l_.pos << wheel_l_.vel << std::endl;
 
   pos_prev = wheel_r_.pos;
   wheel_r_.pos = wheel_r_.calc_enc_angle();
@@ -226,7 +238,8 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
 hardware_interface::return_type diffdrive_arduino ::DiffDriveArduinoHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
-  std::cerr << "velocity update " << wheel_l_.cmd << std::endl;
+  std::cerr << "velocity update " << wheel_l_.cmd << " " << wheel_r_.cmd << std::endl;
+
   if (!comms_.connected())
   {
     std::cerr << "DISCONNECTED FROM ARDUINO " << wheel_l_.cmd << std::endl;

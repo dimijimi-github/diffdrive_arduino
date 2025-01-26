@@ -1,3 +1,5 @@
+`ros2 topic pub /diff_cont/cmd_vel geometry_msgs/msg/TwistStamped "{header: {stamp: {sec: 0, nanosec: 0}, frame_id: 'base_link'}, twist: {linear: {x: 0.06, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}}"`
+
 # diffdrive_arduino
 
 This node is designed to provide a ros2_control hardware interface for an Arduino running firmware from `ros_arduino_bridge`.
