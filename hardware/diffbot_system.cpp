@@ -238,7 +238,7 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
 hardware_interface::return_type diffdrive_arduino ::DiffDriveArduinoHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
-  std::cerr << "velocity update " << wheel_l_.cmd << " " << wheel_r_.cmd << std::endl;
+  // std::cerr << "velocity update " << wheel_l_.cmd << " " << wheel_r_.cmd << std::endl;
 
   if (!comms_.connected())
   {
