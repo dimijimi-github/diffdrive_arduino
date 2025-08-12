@@ -146,22 +146,48 @@ public:
     val_2 = this->encoder2;
   }
 
+  void microcontroller_read_velocities() {
+    std::string response = send_msg("v\r");
+
+    // std::cerr << "read values " << response << std::endl;
+
+    std::string delimiter = " ";
+    size_t del_pos = response.find(delimiter);
+    std::string token_1 = response.substr(0, del_pos);
+    std::string token_2 = response.substr(del_pos + delimiter.length());
+
+    try{
+      this->velocity1 = std::stoi(token_1.c_str());
+      this->velocity2 = std::stoi(token_2.c_str());
+    } catch  (const std::invalid_argument&) {
+
+    }
+
+    // std::cerr << "parsed values " << this->encoder1 << " " << this->encoder2 << std::endl;
+  }
+
+  void read_velocities(double &val_1, double &val_2)
+  {
+    val_1 = this->velocity1;
+    val_2 = this->velocity2;
+  }
+
   void set_motor_values(int val_1, int val_2) {
     // std::cerr << "setting motor values " << val_1 << " " << val_2 << std::endl;
-    this->velocity1 = val_1;
-    this->velocity2 = val_2;
+    this->motor_target1 = val_1;
+    this->motor_target2 = val_2;
   }
 
   void arduino_set_motor_values()
   {
     std::stringstream ss;
-    ss << "m " << this->velocity1 << " " << this->velocity2 << "\r";
+    ss << "m " << this->motor_target1 << " " << this->motor_target2 << "\r";
     send_msg(ss.str());
   }
 
   void arduino_set_pid_values(){
     std::stringstream ss;
-    ss << "u " << k_p << ":" << k_d << ":" << k_i << ":" << k_o << "\r";
+    ss << "u " << k_p << " " << k_i << " " << k_d << " " << "\r";
     send_msg(ss.str());
   }
 
@@ -173,7 +199,7 @@ public:
     this->k_o = k_o;
 
     std::stringstream ss;
-    ss << "u " << k_p << ":" << k_d << ":" << k_i << ":" << k_o << "\r";
+    ss << "u " << k_p << " " << k_i << " " << k_d << " "  << "\r";
     send_msg(ss.str());
   }
 
@@ -181,10 +207,12 @@ private:
     LibSerial::SerialPort serial_conn_;
     int timeout_ms_;
     bool sending = false;
-    double velocity1 = 0;
-    double velocity2 = 0;
+    double motor_target1 = 0;
+    double motor_target2 = 0;
     double encoder1 = 0;
     double encoder2 = 0;
+    double velocity1 = 0;
+    double velocity2 = 0;
     int k_p;
     int k_d;
     int k_i;
@@ -202,9 +230,9 @@ private:
       // arduino_set_pid_values();
       // std::this_thread::sleep_for(std::chrono::milliseconds(600));
       arduino_set_motor_values();
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
       arduino_read_encoder_values();
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     RCLCPP_INFO(rclcpp::get_logger("MyHardwareInterface"), "Worker thread stopped.");

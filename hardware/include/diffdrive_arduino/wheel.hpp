@@ -11,7 +11,7 @@ class Wheel
 
     std::string name = "";
     int enc = 0;
-    double cmd = 0;
+    double cmd = 0; // Commanded velocity in radians per second
     double pos = 0;
     double vel = 0;
     double rads_per_count = 0;
