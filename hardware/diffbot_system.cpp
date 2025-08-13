@@ -253,7 +253,7 @@ hardware_interface::return_type diffdrive_arduino ::DiffDriveArduinoHardware::wr
   if (cfg_.l != motor_l_counts_per_second || 
       cfg_.r != motor_r_counts_per_second)
   {
-    std::cerr << "setting motor values " << motor_l_counts_per_second << " " << motor_r_counts_per_second << std::endl;
+    // std::cerr << "setting motor values " << motor_l_counts_per_second << " " << motor_r_counts_per_second << std::endl;
   }
 
   comms_.set_motor_values(motor_l_counts_per_second, motor_r_counts_per_second);

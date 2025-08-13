@@ -35,7 +35,19 @@ LibSerial::BaudRate convert_baud_rate(int baud_rate)
 class ArduinoComms
 {
 
+
 public:
+  // Helper to parse two integers from a string like "e 602048     8717952"
+  static bool parse_two_numbers(const std::string& s, double& out1, double& out2) {
+    std::istringstream iss(s);
+    char skip;
+    if (!(iss >> skip >> out1 >> out2)) {
+      std::cerr << "Failed to parse two integers from string: " << s << std::endl;
+      return false;
+    }
+    
+    return true;
+  }
 
   ArduinoComms() = default;
 
@@ -78,7 +90,7 @@ public:
   }
 
 
-  std::string send_msg(const std::string &msg_to_send, bool print_output = true)
+  std::string send_msg(const std::string &msg_to_send, bool has_no_response = false, bool print_output = true)
   {
     // std::cerr << "sending " << msg_to_send << std::endl ;
     if (this->sending == true) {
@@ -89,20 +101,22 @@ public:
     serial_conn_.Write(msg_to_send + "\r");
 
     std::string response = "";
-    try
-    {
-      // this->sending = true;
-      // Responses end with \r\n so we will read up to (and including) the \n.
-      //if (serial_conn_.IsDataAvailable()) {
-	  //std::cerr << "about to read" << std::endl;
-          serial_conn_.ReadLine(response, '\n', timeout_ms_);
-     // std::cerr << "response " << response << std::endl;
-      //}
-    }
-    catch (const LibSerial::ReadTimeout&)
-    {
+    if (!has_no_response) {
+      try
+      {
+        // this->sending = true;
+        // Responses end with \r\n so we will read up to (and including) the \n.
+        //if (serial_conn_.IsDataAvailable()) {
+        //std::cerr << "about to read" << std::endl;
+        serial_conn_.ReadLine(response, '\n', timeout_ms_);
+        // std::cerr << "response " << response << std::endl;
+        //}
+      }
+      catch (const LibSerial::ReadTimeout&)
+      {
         // this->sending = false;
         // std::cerr << "The ReadByte() call has timed out." << std::endl ;
+      }
     }
     this->sending = false;
 
@@ -120,50 +134,28 @@ public:
     std::string response = send_msg("\r");
   }
 
-  void arduino_read_encoder_values() {
+  void microcontroller_read_encoder_values() {
     std::string response = send_msg("e\r");
+    
+    parse_two_numbers(response, this->encoder1, this->encoder2);
 
-    // std::cerr << "read values " << response << std::endl;
-
-    std::string delimiter = " ";
-    size_t del_pos = response.find(delimiter);
-    std::string token_1 = response.substr(0, del_pos);
-    std::string token_2 = response.substr(del_pos + delimiter.length());
-
-    try{
-    this->encoder1 = std::stoi(token_1.c_str());
-    this->encoder2 = std::stoi(token_2.c_str());
-    } catch  (const std::invalid_argument&) {
-
-    }
-
-    // std::cerr << "parsed values " << this->encoder1 << " " << this->encoder2 << std::endl;
+    //std::cerr << "parsed encoder values " << this->encoder1 << " " << this->encoder2 << std::endl;
   }
 
   void read_encoder_values(int &val_1, int &val_2)
   {
     val_1 = this->encoder1;
     val_2 = this->encoder2;
+
+    // std::cerr << "read encoder values " << val_1 << " " << val_2 << std::endl;
   }
 
   void microcontroller_read_velocities() {
     std::string response = send_msg("v\r");
-
-    // std::cerr << "read values " << response << std::endl;
-
-    std::string delimiter = " ";
-    size_t del_pos = response.find(delimiter);
-    std::string token_1 = response.substr(0, del_pos);
-    std::string token_2 = response.substr(del_pos + delimiter.length());
-
-    try{
-      this->velocity1 = std::stoi(token_1.c_str());
-      this->velocity2 = std::stoi(token_2.c_str());
-    } catch  (const std::invalid_argument&) {
-
-    }
-
-    // std::cerr << "parsed values " << this->encoder1 << " " << this->encoder2 << std::endl;
+    
+    parse_two_numbers(response, this->velocity1, this->velocity2);
+    
+    // std::cerr << "parsed velocities " << this->velocity1 << " " << this->velocity2 << std::endl;
   }
 
   void read_velocities(double &val_1, double &val_2)
@@ -182,13 +174,13 @@ public:
   {
     std::stringstream ss;
     ss << "m " << this->motor_target1 << " " << this->motor_target2 << "\r";
-    send_msg(ss.str());
+    send_msg(ss.str(), true);
   }
 
   void arduino_set_pid_values(){
     std::stringstream ss;
     ss << "u " << k_p << " " << k_i << " " << k_d << " " << "\r";
-    send_msg(ss.str());
+    send_msg(ss.str(), true);
   }
 
   void set_pid_values(int k_p, int k_d, int k_i, int k_o)
@@ -200,7 +192,7 @@ public:
 
     std::stringstream ss;
     ss << "u " << k_p << " " << k_i << " " << k_d << " "  << "\r";
-    send_msg(ss.str());
+    send_msg(ss.str(), true);
   }
 
 private:
@@ -229,9 +221,14 @@ private:
       // Perform periodic tasks (e.g., polling sensors)
       // arduino_set_pid_values();
       // std::this_thread::sleep_for(std::chrono::milliseconds(600));
+
+
       arduino_set_motor_values();
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
-      arduino_read_encoder_values();
+
+      microcontroller_read_encoder_values();
+
+      microcontroller_read_velocities();
+
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
