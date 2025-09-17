@@ -92,6 +92,15 @@ public:
 
   std::string send_msg(const std::string &msg_to_send, bool has_no_response = false, bool print_output = true)
   {
+    // The block below is to test timing issues
+    // static std::chrono::steady_clock::time_point last_call_time = std::chrono::steady_clock::now();
+    // auto now = std::chrono::steady_clock::now();
+    // auto duration_since_last_call = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_call_time).count();
+    // if (duration_since_last_call <= 50) {
+    //   return "";
+    // }
+    
+    last_call_time = now;
     // std::cerr << "sending " << msg_to_send << std::endl ;
     if (this->sending == true) {
       // std::cerr << "won't send" << std::endl;
@@ -222,12 +231,13 @@ private:
       // arduino_set_pid_values();
       // std::this_thread::sleep_for(std::chrono::milliseconds(600));
 
-
-      arduino_set_motor_values();
-
       microcontroller_read_encoder_values();
 
       microcontroller_read_velocities();
+
+      // Keep this right above the sleep
+      // The pico needs time to react to the motor commands
+      arduino_set_motor_values();
 
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }

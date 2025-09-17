@@ -221,17 +221,13 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
   comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
   comms_.read_velocities(wheel_l_.vel, wheel_r_.vel);
 
-  // double delta_seconds = period.seconds();
 
-  double pos_prev = wheel_l_.pos;
   wheel_l_.pos = wheel_l_.calc_enc_angle();
-  //wheel_l_.vel = (wheel_l_.pos - pos_prev) / delta_seconds;
 
   // std::cerr << "left pos/velocity " << wheel_l_.pos << wheel_l_.vel << std::endl;
 
-  pos_prev = wheel_r_.pos;
   wheel_r_.pos = wheel_r_.calc_enc_angle();
-  //wheel_r_.vel = (wheel_r_.pos - pos_prev) / delta_seconds;
+
 
   return hardware_interface::return_type::OK;
 }
