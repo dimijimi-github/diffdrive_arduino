@@ -99,8 +99,8 @@ public:
     // if (duration_since_last_call <= 50) {
     //   return "";
     // }
+    // last_call_time = now;
     
-    last_call_time = now;
     // std::cerr << "sending " << msg_to_send << std::endl ;
     if (this->sending == true) {
       // std::cerr << "won't send" << std::endl;
