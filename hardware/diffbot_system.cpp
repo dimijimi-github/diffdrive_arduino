@@ -211,7 +211,7 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_deactivate(
 }
 
 hardware_interface::return_type DiffDriveArduinoHardware::read(
-  const rclcpp::Time & /*time*/, const rclcpp::Duration & period)
+  const rclcpp::Time & /*time*/, const rclcpp::Duration & /* period */)
 {
   if (!comms_.connected())
   {
@@ -221,13 +221,11 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
   comms_.read_encoder_values(wheel_l_.enc, wheel_r_.enc);
   comms_.read_velocities(wheel_l_.vel, wheel_r_.vel);
 
-
   wheel_l_.pos = wheel_l_.calc_enc_angle();
-
-  // std::cerr << "left pos/velocity " << wheel_l_.pos << wheel_l_.vel << std::endl;
-
   wheel_r_.pos = wheel_r_.calc_enc_angle();
 
+  // The state interfaces point directly to wheel_l_.pos, wheel_l_.vel, etc.
+  // so updating them here automatically updates the interface values
 
   return hardware_interface::return_type::OK;
 }
@@ -235,22 +233,17 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
 hardware_interface::return_type diffdrive_arduino ::DiffDriveArduinoHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
-  // std::cerr << "velocity update " << wheel_l_.cmd << " " << wheel_r_.cmd << std::endl;
-
   if (!comms_.connected())
   {
-    std::cerr << "DISCONNECTED FROM THE MICROCONTROLLER " << wheel_l_.cmd << std::endl;
+    std::cerr << "DISCONNECTED FROM THE MICROCONTROLLER" << std::endl;
     return hardware_interface::return_type::ERROR;
   }
 
+  // The command interfaces point directly to wheel_l_.cmd and wheel_r_.cmd
+  // which are updated by the diff_drive_controller
+
   int motor_l_counts_per_second = wheel_l_.cmd / wheel_l_.rads_per_count;
   int motor_r_counts_per_second = wheel_r_.cmd / wheel_r_.rads_per_count;
-  
-  if (cfg_.l != motor_l_counts_per_second || 
-      cfg_.r != motor_r_counts_per_second)
-  {
-    // std::cerr << "setting motor values " << motor_l_counts_per_second << " " << motor_r_counts_per_second << std::endl;
-  }
 
   comms_.set_motor_values(motor_l_counts_per_second, motor_r_counts_per_second);
   return hardware_interface::return_type::OK;
